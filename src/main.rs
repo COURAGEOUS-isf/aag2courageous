@@ -8,7 +8,6 @@ use std::{
 use anyhow::{anyhow, Context};
 use clap::CommandFactory;
 use courageous_format::{Alarm, Position3d, Track, TrackingRecord, Version};
-use indicatif::{ProgressBar, ProgressIterator};
 use nmea::{
     sentences::{GgaData, RmcData},
     NmeaSentence,
@@ -74,7 +73,6 @@ fn main() -> anyhow::Result<()> {
 
     let rmc_gga_records = lines
         .into_iter()
-        .progress_with(ProgressBar::new(20).with_message("Extracting GPRMC & GPGGA records"))
         .map(|line| -> anyhow::Result<Option<(GgaData, RmcData)>> {
             if line.starts_with("$PAAG") {
                 return Ok(None);
