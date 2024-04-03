@@ -11,10 +11,10 @@ description = "Commandline application to convert Aaronia GPS log files to COURA
 anyhow = "1.0.81"
 chrono = "0.4.37"
 clap = { version = "4.5.4", features = ["derive"] }
-colored = "2.1.0"
 courageous-format = { git = "https://github.com/COURAGEOUS-isf/format", version = "0.6.2" }
-glam = "0.27.0"
 nmea = "0.6.0"
-nom = "7.1.3"
-serde = "1.0.117"
 serde_json = "1.0.115"
+
+[dev-dependencies]
+assert_cmd = "2.0.14"
+predicates = "3.1.0"
