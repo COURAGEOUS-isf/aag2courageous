@@ -26,13 +26,21 @@ struct Input {
     #[arg(value_parser = clap_util::Position3dParser)]
     static_cuas_location: Position3d,
 
-    /// Path of the resulting file. Defaults to the input_path + ".json".
+    /// Path of the resulting file. [default: {input_path}.json]
     #[arg(short)]
     output_path: Option<PathBuf>,
 
-    /// Whether to pretty-print the resulting JSON.
+    /// Pretty-print the resulting JSON.
     #[arg(long, default_value_t = false)]
     prettyprint: bool,
+
+    /// The system name specified in the resulting COURAGEOUS file.
+    #[arg(long, default_value_t = {"Unknown".to_owned()})]
+    system_name: String,
+
+    /// The vendor name specified in the resulting COURAGEOUS file.
+    #[arg(long, default_value_t = {"Unknown".to_owned()})]
+    vendor_name: String,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -47,6 +55,8 @@ fn main() -> anyhow::Result<()> {
         .unwrap_or_else(|| input_path.with_extension("json"));
     let static_cuas_location = *input.get_one::<Position3d>("static_cuas_location").unwrap();
     let prettyprint_output = input.get_flag("prettyprint");
+    let system_name = input.get_one::<String>("system_name").unwrap().clone();
+    let vendor_name = input.get_one::<String>("vendor_name").unwrap().clone();
 
     let input_file = BufReader::new(
         File::open(&input_path)
@@ -60,7 +70,6 @@ fn main() -> anyhow::Result<()> {
     // Aaronia GPRMC / GPGGA messages may be desynchronized by a second sometimes: Resynchronize them
     let mut last_rmc: Option<RmcData> = None;
     let mut previous_rmc: Option<RmcData> = None;
-
     let lines = input_file.lines().collect::<Result<Vec<String>, _>>()?;
 
     let rmc_gga_records = lines
@@ -181,8 +190,8 @@ fn main() -> anyhow::Result<()> {
             records,
             uav_home_location: None,
         }],
-        system_name: "Unknown".to_owned(),
-        vendor_name: "Unknown".to_owned(),
+        system_name,
+        vendor_name,
         version: Version::current(),
     };
 
