@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     let vendor_name = input.get_one::<String>("vendor_name").unwrap().clone();
 
     let input_file = BufReader::new(
-        File::open(&input_path)
+        File::open(input_path)
             .with_context(|| format!("Failed to read input file at {}", input_path.display()))?,
     );
     let output_file =
@@ -92,7 +92,7 @@ fn main() -> anyhow::Result<()> {
                 if rmc.fix_time.is_none() {
                     return Ok(None);
                 }
-                if last_rmc == None {
+                if last_rmc.is_none() {
                     last_rmc = Some(rmc);
                 } else {
                     previous_rmc = last_rmc;

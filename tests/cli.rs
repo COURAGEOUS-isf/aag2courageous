@@ -1,6 +1,6 @@
 use assert_cmd::prelude::*; // Add methods on commands
 use predicates::prelude::*; // Used for writing assertions
-use std::{fs::File, io::Read, path::Path, process::Command}; // Run programs
+use std::{path::Path, process::Command}; // Run programs
 
 #[test]
 fn convert_test_file() {
