@@ -117,7 +117,7 @@ fn main() -> anyhow::Result<()> {
                 .and_time(time)
                 .and_utc()
                 .signed_duration_since(chrono::DateTime::UNIX_EPOCH)
-                .num_seconds() as u64;
+                .num_milliseconds() as u64;
             // let (dir_sin, dir_cos) = (direction as f64).to_radians().sin_cos();
             // let (speed_x, speed_y) = (speed * dir_cos, speed * dir_sin);
 
