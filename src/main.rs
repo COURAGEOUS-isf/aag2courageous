@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    collections::HashMap,
     fs::File,
     io::{BufRead, BufReader, BufWriter},
     path::PathBuf,
@@ -67,74 +68,44 @@ fn main() -> anyhow::Result<()> {
         })?);
 
     // Aaronia GPRMC / GPGGA messages may be desynchronized by a second sometimes: Resynchronize them
-    let mut last_rmc: Option<RmcData> = None;
-    let mut previous_rmc: Option<RmcData> = None;
     let lines = input_file.lines().collect::<Result<Vec<String>, _>>()?;
+    let mut paired_records: HashMap<chrono::NaiveTime, (Option<RmcData>, Option<GgaData>)> =
+        HashMap::new();
+    for line in lines {
+        if line.starts_with("$PAAG") {
+            continue;
+        }
 
-    let rmc_gga_records = lines
+        // TODO: Fork nmea and make Error statically lived
+        let nmea_sentence =
+            nmea::parse_nmea_sentence(&line).map_err(|err| anyhow!(err.to_string()))?;
+        // TODO: Fork nmea and add Clone & Copy to NmeaSentence
+        let nmea_sentence_2 = NmeaSentence {
+            checksum: nmea_sentence.checksum,
+            data: nmea_sentence.data,
+            message_id: nmea_sentence.message_id,
+            talker_id: nmea_sentence.talker_id,
+        };
+        if let Ok(rmc) = nmea::sentences::parse_rmc(nmea_sentence) {
+            if let Some(time) = rmc.fix_time {
+                paired_records.entry(time).or_default().0 = Some(rmc);
+            }
+        } else if let Ok(gga) = nmea::sentences::parse_gga(nmea_sentence_2) {
+            if let Some(time) = gga.fix_time {
+                paired_records.entry(time).or_default().1 = Some(gga);
+            }
+        }
+    }
+
+    let records = paired_records
         .into_iter()
-        .map(|line| -> anyhow::Result<Option<(GgaData, RmcData)>> {
-            if line.starts_with("$PAAG") {
-                return Ok(None);
-            }
-
-            // TODO: Fork nmea and make Error statically lived
-            let nmea_sentence =
-                nmea::parse_nmea_sentence(&line).map_err(|err| anyhow!(err.to_string()))?;
-            // TODO: Fork nmea and add Clone & Copy to NmeaSentence
-            let nmea_sentence_2 = NmeaSentence {
-                checksum: nmea_sentence.checksum,
-                data: nmea_sentence.data,
-                message_id: nmea_sentence.message_id,
-                talker_id: nmea_sentence.talker_id,
-            };
-            if let Ok(rmc) = nmea::sentences::parse_rmc(nmea_sentence) {
-                if rmc.fix_time.is_none() {
-                    return Ok(None);
-                }
-                if last_rmc.is_none() {
-                    last_rmc = Some(rmc);
-                } else {
-                    previous_rmc = last_rmc;
-                    last_rmc = Some(rmc);
-                }
-            } else if let Ok(gga) = nmea::sentences::parse_gga(nmea_sentence_2) {
-                if let Some(prev) = previous_rmc.take() {
-                    if gga.fix_time == prev.fix_time {
-                        return Ok(Some((gga, prev)));
-                    } else {
-                        previous_rmc = Some(prev);
-                    }
-                } else if let Some(last) = last_rmc.take() {
-                    if gga.fix_time == last.fix_time {
-                        return Ok(Some((gga, last)));
-                    } else {
-                        last_rmc = Some(last)
-                    }
-                }
-            }
-
-            Ok(None)
+        .filter_map(|(_, (rmc, gga))| match (rmc, gga) {
+            (Some(rmc), Some(gga)) => Some((rmc, gga)),
+            _ => None,
         })
         .enumerate()
-        .filter_map(
-            |(line_num, maybe_pos)| -> Option<anyhow::Result<(GgaData, RmcData)>> {
-                maybe_pos
-                    .with_context(|| {
-                        format!("Failed to parse line {} of the input file", line_num + 1)
-                    })
-                    .transpose()
-            },
-        )
-        .collect::<Result<Vec<_>, _>>()?;
-
-    let records = rmc_gga_records
-        .into_iter()
-        .enumerate()
-        .filter_map(|(record_idx, (gga, rmc))| -> Option<TrackingRecord> {
-            let (Some(date), Some(_speed), Some(_direction)) =
-                (rmc.fix_date, rmc.speed_over_ground, rmc.true_course)
-            else {
+        .filter_map(|(record_idx, (rmc, gga))| -> Option<TrackingRecord> {
+            let Some(date) = rmc.fix_date else {
                 return None;
             };
             let (Some(time), Some(lat), Some(lon), Some(height)) =
