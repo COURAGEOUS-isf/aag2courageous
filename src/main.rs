@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::File,
     io::{BufRead, BufReader, BufWriter},
     path::PathBuf,
@@ -69,8 +69,8 @@ fn main() -> anyhow::Result<()> {
 
     // Aaronia GPRMC / GPGGA messages may be desynchronized by a second sometimes: Resynchronize them
     let lines = input_file.lines().collect::<Result<Vec<String>, _>>()?;
-    let mut paired_records: HashMap<chrono::NaiveTime, (Option<RmcData>, Option<GgaData>)> =
-        HashMap::new();
+    let mut paired_records: BTreeMap<chrono::NaiveTime, (Option<RmcData>, Option<GgaData>)> =
+        BTreeMap::new();
     for line in lines {
         if line.starts_with("$PAAG") {
             continue;
@@ -132,7 +132,7 @@ fn main() -> anyhow::Result<()> {
                     active: false,
                     certainty: 0.,
                 },
-                classification: courageous_format::Classification::Uav,
+                classification: courageous_format::Classification::Unknown,
                 location: courageous_format::Location::Position3d(pos),
                 record_number: record_idx as u64,
                 time,
