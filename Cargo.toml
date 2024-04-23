@@ -1,6 +1,6 @@
 [package]
 name = "aag2courageous"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2021"
 authors = ["Alejandro Perea (aleok.inf@gmail.com)"]
 description = "Commandline application to convert Aaronia GPS log files to COURAGEOUS files"
